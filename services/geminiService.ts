@@ -2,7 +2,18 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { InsightMetrics, VideoAnalysisResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to safely get the AI client
+// We initialize it lazily (inside the function) instead of globally.
+// This prevents the entire app from crashing with a "Blank Screen" on load 
+// if process.env.API_KEY is missing or undefined in the deployment environment.
+const getAiClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("系統警告: 未偵測到 API_KEY。請確保環境變數已設定。");
+  }
+  // Allow initialization even if empty to let the error happen during the call, not load.
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 // --- Helper: Generate ID ---
 const generateId = () => Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
@@ -25,6 +36,7 @@ export const fileToGenerativePart = async (file: File): Promise<string> => {
 // --- Service: Analyze Insight Screenshot ---
 export const analyzeInsightScreenshot = async (file: File): Promise<InsightMetrics> => {
   const base64Data = await fileToGenerativePart(file);
+  const ai = getAiClient();
 
   const schema: Schema = {
     type: Type.OBJECT,
@@ -80,6 +92,7 @@ export const analyzeInsightScreenshot = async (file: File): Promise<InsightMetri
 // --- Service: Analyze Video File ---
 export const analyzeVideoContent = async (file: File): Promise<VideoAnalysisResult> => {
   const base64Data = await fileToGenerativePart(file);
+  const ai = getAiClient();
 
   const schema: Schema = {
     type: Type.OBJECT,
